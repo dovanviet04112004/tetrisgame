@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextDatabase xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="texts.xsd" Version="4.25.0">
+  <Languages>
+    <Language Id="GB" />
+  </Languages>
+  <Texts>
+    <TextGroup Id="Group1" />
+    <TextGroup Id="Tetris">
+      <Text Id="TetrisNext" Alignment="Left" TypographyId="Small">
+        <Translation Language="GB">Next</Translation>
+      </Text>
+      <Text Id="TetrisScore" Alignment="Left" TypographyId="Small">
+        <Translation Language="GB">Score &lt;value&gt;</Translation>
+      </Text>
+      <Text Id="TetrisLevel" Alignment="Left" TypographyId="Small">
+        <Translation Language="GB">Level &lt;value&gt;</Translation>
+      </Text>
+      <Text Id="TetrisLines" Alignment="Left" TypographyId="Small">
+        <Translation Language="GB">Lines &lt;value&gt;</Translation>
+      </Text>
+      <Text Id="TetrisGameOver" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Game Over</Translation>
+      </Text>
+      <Text Id="TetrisPause" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Paused</Translation>
+      </Text>
+      <Text Id="TetrisHint" Alignment="Center" TypographyId="Small">
+        <Translation Language="GB">Hold: Retry   Rotate: Menu</Translation>
+      </Text>
+      <Text Id="TetrisFinish" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Finish!</Translation>
+      </Text>
+      <Text Id="TetrisTimeUp" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Time Up</Translation>
+      </Text>
+      <Text Id="TetrisTime" Alignment="Left" TypographyId="Small">
+        <Translation Language="GB">Time &lt;value&gt;</Translation>
+      </Text>
+      <Text Id="TetrisTitle" Alignment="Center" TypographyId="Large">
+        <Translation Language="GB">TETRIS</Translation>
+      </Text>
+      <Text Id="TetrisMarathon" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Marathon</Translation>
+      </Text>
+      <Text Id="TetrisSprint" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Sprint 40</Translation>
+      </Text>
+      <Text Id="TetrisUltra" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Ultra 2:00</Translation>
+      </Text>
+      <Text Id="TetrisZen" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Zen</Translation>
+      </Text>
+      <Text Id="TetrisMenuHint" Alignment="Center" TypographyId="Small">
+        <Translation Language="GB">Stick: Move   Rotate: Start</Translation>
+      </Text>
+      <Text Id="TetrisBest" Alignment="Center" TypographyId="Small">
+        <Translation Language="GB">Best &lt;value&gt;</Translation>
+      </Text>
+      <Text Id="TetrisPauseHint" Alignment="Center" TypographyId="Small">
+        <Translation Language="GB">Pause: Resume  Rot: Menu</Translation>
+      </Text>
+      <Text Id="TetrisVersus" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">2P Versus</Translation>
+      </Text>
+      <Text Id="TetrisP1" Alignment="Center" TypographyId="Small">
+        <Translation Language="GB">P1</Translation>
+      </Text>
+      <Text Id="TetrisP2" Alignment="Center" TypographyId="Small">
+        <Translation Language="GB">P2</Translation>
+      </Text>
+      <Text Id="TetrisP1Win" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">P1 Wins</Translation>
+      </Text>
+      <Text Id="TetrisP2Win" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">P2 Wins</Translation>
+      </Text>
+      <Text Id="TetrisLinesC" Alignment="Center" TypographyId="Small">
+        <Translation Language="GB">Lines &lt;value&gt;</Translation>
+      </Text>
+      <Text Id="TetrisHold" Alignment="Left" TypographyId="Small">
+        <Translation Language="GB">Hold</Translation>
+      </Text>
+    </TextGroup>
+  </Texts>
+  <Typographies>
+    <Typography Id="Default" Font="verdana.ttf" Size="20" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
+    <Typography Id="Large" Font="verdana.ttf" Size="40" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" />
+    <Typography Id="Small" Font="verdana.ttf" Size="10" Bpp="4" IsVector="no" Direction="LTR" FallbackCharacter="?" WildcardCharacterRanges="0x30-0x3A" />
+  </Typographies>
+</TextDatabase>
