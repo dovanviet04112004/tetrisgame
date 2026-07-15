@@ -694,7 +694,8 @@ void Screen1View::handleTickEvent()
         }
         else // VS_END: Xoay (SW) = về Menu, HOLD = chơi lại. Bỏ nút thả để tránh lỡ tay.
         {
-            if (endGuardFrames == 0 && code == tetris::CMD_ROT_CW)
+            if (endGuardFrames == 0 &&
+                (code == tetris::CMD_ROT_CW || code == 16 + tetris::CMD_ROT_CW)) // Xoay về Menu: P1 (nút PC11) HOẶC P2 (joystick SW = mã 18)
             {
                 showMenu();
                 stateChanged = true;
