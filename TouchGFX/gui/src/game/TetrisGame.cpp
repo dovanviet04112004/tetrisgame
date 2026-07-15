@@ -9,8 +9,31 @@ extern "C" void sound_emit(uint8_t id); // đẩy sự kiện âm vào soundQueu
 namespace tetris
 {
 
+// ===== Lock delay (Yêu cầu nâng cao — chuẩn Tetris Guideline) =====
+static const uint8_t LOCK_DELAY_FRAMES = 30; // ~0,5 s @ 60fps: khoảng trễ trước khi khoá khối chạm đáy
+static const uint8_t LOCK_MAX_RESETS   = 15; // tối đa 15 lần hoãn khoá do di chuyển/xoay (chống treo khối vô hạn)
+
+// ===== Wall-kick SRS (Super Rotation System) =====
+// Mỗi lần xoay thử lần lượt 5 phép dịch (dx, dy); lọt vị trí nào thì nhận vị trí đó.
+// Bảng ghi theo chuẩn SRS với dy DƯƠNG = LÊN — khi áp vào bàn phải ĐẢO DẤU dy vì
+// trục y của bàn hướng XUỐNG. Chỉ lưu chiều CW từ trạng thái s (hàng s = s -> s+1);
+// chiều CCW từ s về s-1 = ĐẢO DẤU hàng (s-1) (tính đối xứng của SRS: kick A->B = -kick B->A).
+static const int8_t KICK_JLSTZ_CW[4][5][2] = {
+    { {0,0}, {-1,0}, {-1, 1}, {0,-2}, {-1,-2} }, // 0 -> R
+    { {0,0}, { 1,0}, { 1,-1}, {0, 2}, { 1, 2} }, // R -> 2
+    { {0,0}, { 1,0}, { 1, 1}, {0,-2}, { 1,-2} }, // 2 -> L
+    { {0,0}, {-1,0}, {-1,-1}, {0, 2}, {-1, 2} }, // L -> 0
+};
+static const int8_t KICK_I_CW[4][5][2] = {
+    { {0,0}, {-2,0}, { 1,0}, {-2,-1}, { 1, 2} }, // 0 -> R
+    { {0,0}, {-1,0}, { 2,0}, {-1, 2}, { 2,-1} }, // R -> 2
+    { {0,0}, { 2,0}, {-1,0}, { 2, 1}, {-1,-2} }, // 2 -> L
+    { {0,0}, { 1,0}, {-2,0}, { 1,-2}, {-2, 1} }, // L -> 0
+};
+
 TetrisGame::TetrisGame()
-    : curType(0), curRot(0), curX(0), curY(0), gameOver(true), lines(0), score(0), level(1), mode(MODE_MARATHON), rngState(0x2545F491u), holdPiece(-1), holdUsed(false)
+    : curType(0), curRot(0), curX(0), curY(0), gameOver(true), lines(0), score(0), level(1), mode(MODE_MARATHON), rngState(0x2545F491u), holdPiece(-1), holdUsed(false),
+      gravCounter(0), lockFrames(0), lockResets(0)
 {
     bagIdx = NUM_PIECES; // ép đổ túi mới ở lần lấy khối đầu tiên
     nextPiece = 0;
@@ -169,6 +192,7 @@ void TetrisGame::spawn()
     curX = 3; // canh giữa hộp 4x4 trong 10 cột
     curY = 0;
     holdUsed = false;        // khối mới -> được phép giữ lại 1 lần
+    resetPieceTimers();      // khối mới -> reset đồng hồ trọng lực + lock delay
     if (collides(curType, curRot, curX, curY))
     {
         if (mode == MODE_ZEN)
@@ -204,21 +228,93 @@ void TetrisGame::start(Mode m)
     spawn();
 }
 
-void TetrisGame::onGravityTick()
+// Khối hiện tại đã "tiếp đất" chưa (không thể rơi thêm 1 ô)?
+bool TetrisGame::grounded() const
 {
-    if (gameOver)
+    return collides(curType, curRot, curX, curY + 1);
+}
+
+// Reset đồng hồ trọng lực + lock delay — gọi khi có khối MỚI (spawn/hold đổi khối)
+void TetrisGame::resetPieceTimers()
+{
+    gravCounter = 0;
+    lockFrames = 0;
+    lockResets = 0;
+}
+
+// Move-reset: thao tác (di chuyển/xoay) thành công khi khối đang chạm đáy
+// -> hoãn khoá thêm 0,5 s, tối đa LOCK_MAX_RESETS lần (chống giữ khối lơ lửng mãi)
+void TetrisGame::onSuccessfulMove()
+{
+    if (lockFrames > 0 && lockResets < LOCK_MAX_RESETS)
+    {
+        lockFrames = 0;
+        lockResets++;
+    }
+}
+
+// Xoay theo SRS: dir = +1 (CW) / -1 (CCW). Thử 5 phép dịch wall-kick;
+// lọt vị trí nào nhận vị trí đó, trượt cả 5 thì giữ nguyên.
+void TetrisGame::tryRotate(int dir)
+{
+    if (curType == 1) // khối O: xoay không đổi hình -> bỏ qua
         return;
 
-    if (collides(curType, curRot, curX, curY + 1))
+    const int nr = (curRot + (dir > 0 ? 1 : 3)) & 3;
+    // CW từ trạng thái s: dùng hàng s. CCW từ s về s-1: đảo dấu hàng (s-1) = hàng nr.
+    const int row = (dir > 0) ? curRot : nr;
+    const int8_t (*kick)[2] = (curType == 0) ? KICK_I_CW[row] : KICK_JLSTZ_CW[row];
+
+    for (int i = 0; i < 5; i++)
     {
-        lockPiece();
-        clearLines();
-        spawn();
+        const int dx = (dir > 0) ? kick[i][0] : -kick[i][0];
+        const int dy = (dir > 0) ? kick[i][1] : -kick[i][1];
+        // SRS quy ước dy dương = LÊN; trục y bàn hướng XUỐNG -> trừ dy
+        const int nx = curX + dx;
+        const int ny = curY - dy;
+        if (!collides(curType, nr, nx, ny))
+        {
+            curRot = nr;
+            curX = nx;
+            curY = ny;
+            onSuccessfulMove(); // xoay thành công lúc chạm đáy -> hoãn khoá
+            emitSound(SND_ROTATE);
+            return;
+        }
     }
-    else
+}
+
+// Gọi MỖI FRAME (60fps). Gộp trọng lực + lock delay:
+// - Chưa chạm đáy: đếm gravCounter, đủ getGravityFrames() thì rơi 1 ô.
+// - Đã chạm đáy: đếm lockFrames, đủ LOCK_DELAY_FRAMES (~0,5 s) mới khoá
+//   (người chơi còn kịp trượt/xoay; mỗi thao tác thành công reset đồng hồ này).
+// Trả về true nếu có thay đổi cần vẽ lại.
+bool TetrisGame::onFrameTick()
+{
+    if (gameOver)
+        return false;
+
+    if (grounded())
     {
+        gravCounter = 0; // đứng trên nền -> trọng lực tạm nghỉ
+        if (++lockFrames >= LOCK_DELAY_FRAMES)
+        {
+            lockPiece();
+            clearLines();
+            spawn();
+            return true;
+        }
+        return false;
+    }
+
+    lockFrames = 0; // rơi tự do (vd vừa trượt ra mép) -> huỷ đếm khoá
+    if (++gravCounter >= (uint8_t)getGravityFrames())
+    {
+        gravCounter = 0;
         curY++;
+        return true;
     }
+    return false;
 }
 
 void TetrisGame::command(Command c)
@@ -229,44 +325,42 @@ void TetrisGame::command(Command c)
     switch (c)
     {
     case CMD_LEFT:
-        if (!collides(curType, curRot, curX - 1, curY)) { curX--; emitSound(SND_MOVE); }
+        if (!collides(curType, curRot, curX - 1, curY))
+        {
+            curX--;
+            onSuccessfulMove(); // trượt thành công lúc chạm đáy -> hoãn khoá (move-reset)
+            emitSound(SND_MOVE);
+        }
         break;
     case CMD_RIGHT:
-        if (!collides(curType, curRot, curX + 1, curY)) { curX++; emitSound(SND_MOVE); }
+        if (!collides(curType, curRot, curX + 1, curY))
+        {
+            curX++;
+            onSuccessfulMove();
+            emitSound(SND_MOVE);
+        }
         break;
     case CMD_ROT_CW:
-        if (curType != 1) // O không cần xoay
-        {
-            const int nr = (curRot + 1) & 3;
-            if (!collides(curType, nr, curX, curY)) { curRot = nr; emitSound(SND_ROTATE); }
-        }
+        tryRotate(+1); // xoay CW theo SRS: thử 5 phép dịch wall-kick
         break;
     case CMD_ROT_CCW:
-        if (curType != 1)
-        {
-            const int nr = (curRot + 3) & 3;
-            if (!collides(curType, nr, curX, curY)) { curRot = nr; emitSound(SND_ROTATE); }
-        }
+        tryRotate(-1); // xoay CCW theo SRS
         break;
     case CMD_SOFT_DROP:
         if (!collides(curType, curRot, curX, curY + 1))
         {
             curY++;
-            score += 1; // thưởng nhẹ soft drop
+            gravCounter = 0; // vừa rơi tay -> hoãn nhịp trọng lực kế
+            score += 1;      // thưởng nhẹ soft drop
         }
-        else
-        {
-            lockPiece();
-            clearLines();
-            spawn();
-        }
+        // Đã chạm đáy: KHÔNG khoá ngay — để lock delay xử lý (người chơi còn kịp chỉnh)
         break;
     case CMD_HARD_DROP:
     {
         int dist = 0;
         while (!collides(curType, curRot, curX, curY + 1)) { curY++; dist++; }
         score += (uint32_t)(2 * dist); // thưởng hard drop theo quãng đường rơi
-        lockPiece();
+        lockPiece();                   // hard drop là ngoại lệ duy nhất: khoá NGAY, bỏ qua lock delay
         clearLines();
         spawn();
         break;
@@ -292,6 +386,7 @@ void TetrisGame::hold()
         curRot = 0;
         curX = 3;
         curY = 0;
+        resetPieceTimers();      // khối đổi vào coi như khối mới -> reset trọng lực + lock delay
         if (collides(curType, curRot, curX, curY))
         {
             if (mode == MODE_ZEN)

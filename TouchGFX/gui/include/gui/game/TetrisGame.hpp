@@ -52,7 +52,7 @@ public:
     TetrisGame();
 
     void start(Mode m = MODE_MARATHON); // reset bàn theo chế độ + spawn khối đầu tiên
-    void onGravityTick();               // 1 nhịp trọng lực: hạ 1 ô / khoá / spawn
+    bool onFrameTick();                 // gọi MỖI FRAME (60fps): trọng lực + lock delay; true = cần vẽ lại
     void command(Command c);            // xử lý 1 lệnh điều khiển
     void hold();                        // giữ khối hiện tại / đổi với khối đã giữ (1 lần/khối)
     void renderTo(uint8_t* grid) const; // gộp bàn + khối hiện tại -> grid[ROWS*COLS]
@@ -82,8 +82,15 @@ private:
     uint8_t  bagIdx;            // vị trí lấy hiện tại trong túi
     int      holdPiece;         // khối đang giữ (-1 = chưa giữ gì)
     bool     holdUsed;          // đã giữ trong lượt khối này chưa (mỗi khối chỉ giữ 1 lần)
+    uint8_t  gravCounter;       // đếm frame cho trọng lực (đủ getGravityFrames() -> rơi 1 ô)
+    uint8_t  lockFrames;        // lock delay: đếm frame từ khi khối chạm đáy (đủ 30 -> khoá)
+    uint8_t  lockResets;        // số lần đã hoãn khoá do di chuyển/xoay (move-reset, tối đa 15)
 
     bool cellFilled(int type, int rot, int r, int c) const; // ô (r,c) hộp 4x4 có khối?
+    bool grounded() const;                                  // khối hiện tại đã chạm đáy/khối khác?
+    void tryRotate(int dir);                                // xoay +1 CW / -1 CCW, thử 5 kick SRS
+    void onSuccessfulMove();                                // move-reset: hoãn lock delay khi thao tác thành công
+    void resetPieceTimers();                                // reset đồng hồ trọng lực + lock cho khối mới
     bool collides(int type, int rot, int x, int y) const;   // đè biên hoặc khối khác?
     void lockPiece();                                       // ghi khối hiện tại vào board
     void clearLines();                                      // xoá các hàng đầy, dồn xuống

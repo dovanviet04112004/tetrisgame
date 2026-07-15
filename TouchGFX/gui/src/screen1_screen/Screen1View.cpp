@@ -720,8 +720,8 @@ void Screen1View::handleTickEvent()
         if (pvp)
         {
             bool ch = changed;
-            if (playFrames % (uint32_t)game.getGravityFrames() == 0)   { game.onGravityTick();   ch = true; }
-            if (playFrames % (uint32_t)gameP2.getGravityFrames() == 0) { gameP2.onGravityTick(); ch = true; }
+            if (game.onFrameTick())   ch = true; // trọng lực + lock delay tự đếm bên trong
+            if (gameP2.onFrameTick()) ch = true;
 
             const bool over1 = game.isGameOver();   // P1 đầy bàn
             const bool over2 = gameP2.isGameOver();  // P2 đầy bàn
@@ -739,12 +739,10 @@ void Screen1View::handleTickEvent()
             return;
         }
 
-        // Trọng lực theo level (Zen: tốc độ nhẹ cố định — xem getGravityFrames)
-        if (playFrames % (uint32_t)game.getGravityFrames() == 0)
-        {
-            game.onGravityTick();
+        // Trọng lực theo level (Zen: tốc độ nhẹ cố định) + lock delay ~0,5 s
+        // (khối chạm đáy chưa khoá ngay, di chuyển/xoay còn hoãn được — xem TetrisGame::onFrameTick)
+        if (game.onFrameTick())
             changed = true;
-        }
 
         // Kiểm tra THẮNG / HẾT GIỜ TRƯỚC khi kiểm tra THUA: một cú khoá vừa đủ
         // 40 hàng (Sprint) hoặc đúng mốc 2:00 (Ultra) phải tính HOÀN THÀNH, không
